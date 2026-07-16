@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Search } from "./search";
 import { Devices } from "./devices";
 import { DeviceFormModal } from "./deviceForm";
@@ -76,17 +76,49 @@ const mockDevices: DeviceWithDisplayFields[] = [
 ];
 
 function App() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("q") || "";
+    }
+    return "";
+  });
+
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [devices, setDevices] =
     useState<DeviceWithDisplayFields[]>(mockDevices);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDevice, setEditingDevice] =
     useState<DeviceWithDisplayFields | null>(null);
 
-  const filteredDevices = devices.filter((device) =>
-    device.deviceName.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        if (searchQuery.trim()) {
+          params.set("q", searchQuery);
+        } else {
+          params.delete("q");
+        }
+        const newRelativePathQuery =
+          window.location.pathname +
+          (params.toString() ? "?" + params.toString() : "");
+        window.history.replaceState(null, "", newRelativePathQuery);
+      }
+    }, 400);
+
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  const filteredDevices = devices.filter((device) => {
+    const term = debouncedQuery.toLowerCase().trim();
+    if (!term) return true;
+
+    const nameToCompare = device.deviceName || device.name || "";
+    return nameToCompare.toLowerCase().includes(term);
+  });
 
   const handleOpenAdd = () => {
     setEditingDevice(null);
@@ -155,12 +187,9 @@ function App() {
           </h2>
 
           <Devices
-            {...({
-              items: filteredDevices,
-              searchQuery,
-              onEdit: handleOpenEdit,
-              onDelete: handleDelete,
-            } as any)}
+            items={filteredDevices}
+            searchQuery={debouncedQuery}
+            onEdit={handleOpenEdit}
           />
         </main>
 

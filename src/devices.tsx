@@ -1,5 +1,7 @@
 import React from "react";
+
 interface Device {
+  id: string;
   DeviceType: string;
   status: "Online" | "Offline" | "Maintenance" | string;
   name: string;
@@ -9,9 +11,10 @@ interface Device {
 interface DevicesProps {
   items: Device[];
   searchQuery: string;
+  onEdit: (item: any) => void;
 }
 
-export function Devices({ items, searchQuery }: DevicesProps) {
+export function Devices({ items, searchQuery, onEdit }: DevicesProps) {
   const getStatusClasses = (status: Device["status"]) => {
     switch (status) {
       case "Online":
@@ -49,7 +52,7 @@ export function Devices({ items, searchQuery }: DevicesProps) {
 
         return (
           <div
-            key={index}
+            key={device.id || index}
             className={`border rounded-2xl p-5 flex flex-col gap-4 backdrop-blur-sm transition-all duration-200 hover:scale-[1.01] ${styles.cardBg}`}
           >
             <div className="flex justify-between items-center">
@@ -77,7 +80,10 @@ export function Devices({ items, searchQuery }: DevicesProps) {
               </p>
             </div>
             <div>
-              <button className="px-4 py-2 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold rounded-lg text-sm shadow-lg shadow-emerald-500/10 transition-all">
+              <button
+                onClick={() => onEdit(device)}
+                className="px-4 py-2 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold rounded-lg text-sm shadow-lg shadow-emerald-500/10 transition-all"
+              >
                 Edit
               </button>
             </div>
