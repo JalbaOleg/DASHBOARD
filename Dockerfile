@@ -9,15 +9,15 @@ COPY src ./src
 COPY public ./public
 COPY index.html .
 COPY vite.config.ts .
-COPY tsconfig.json .
-COPY tsconfig.app.json .
-COPY tsconfig.node.json .
+COPY tsconfig*.json ./
 
 RUN npm run build
 
 FROM nginx:alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
+
+USER nginx
 
 EXPOSE 80
 
