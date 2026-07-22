@@ -2,14 +2,14 @@ name: Release Pipeline
 
 on:
   push:
-    branches:
-      - main
     tags:
-      - "v*"
+      # Se declanșează DOAR când trimiți un tag valid conform Semantic Versioning (ex: v1.0.0, v1.0.2-rc.2)
+      # Orice push obișnuit pe un branch va fi ignorat direct de GitHub Actions.
+      - 'v[0-9]+\.[0-9]+\.[0-9]+'
+      - 'v[0-9]+\.[0-9]+\.[0-9]+-*'
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   pre-flight:
@@ -22,17 +22,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate Semantic Version
+      - name: Extract Version
         id: version
         shell: bash
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-
-          if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9A-Za-z-]+)(\.[0-9A-Za-z-]+)*))?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
-            echo "Invalid Semantic Version tag!"
-            exit 1
-          fi
-
           VERSION="${TAG#v}"
 
           echo "Version: $VERSION"
@@ -56,6 +50,10 @@ jobs:
   package:
     needs: pre-flight
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout repository
