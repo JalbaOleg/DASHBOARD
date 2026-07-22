@@ -3,8 +3,6 @@ name: Release Pipeline
 on:
   push:
     tags:
-      # Se declanșează DOAR când trimiți un tag valid conform Semantic Versioning (ex: v1.0.0, v1.0.2-rc.2)
-      # Orice push obișnuit pe un branch va fi ignorat direct de GitHub Actions.
       - 'v[0-9]+\.[0-9]+\.[0-9]+'
       - 'v[0-9]+\.[0-9]+\.[0-9]+-*'
 
