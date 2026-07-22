@@ -9,10 +9,6 @@ permissions:
   contents: read
   packages: write
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
 jobs:
   pre-flight:
     runs-on: ubuntu-latest
@@ -21,7 +17,8 @@ jobs:
       version: ${{ steps.version.outputs.version }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Validate Semantic Version
         id: version
@@ -30,13 +27,17 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/}"
 
           if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9A-Za-z-]+)(\.[0-9A-Za-z-]+)*))?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
-            echo "Invalid Semantic Version tag"
+            echo "Invalid Semantic Version tag!"
             exit 1
           fi
 
-          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          VERSION="${TAG#v}"
 
-      - uses: actions/setup-node@v4
+          echo "Version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
@@ -44,10 +45,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Build project
         run: npm run build
 
-      - name: Lint
+      - name: Run linter
         run: npm run lint
 
   package:
@@ -55,7 +56,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Convert repository name to lowercase
+        id: repo
+        shell: bash
+        run: |
+          IMAGE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -67,11 +76,11 @@ jobs:
       - name: Docker Build
         run: |
           docker build \
-            -t ghcr.io/${{ github.repository }}:${{ needs.pre-flight.outputs.version }} .
+            -t ghcr.io/${{ steps.repo.outputs.image }}:${{ needs.pre-flight.outputs.version }} .
 
       - name: Docker Push
         run: |
-          docker push ghcr.io/${{ github.repository }}:${{ needs.pre-flight.outputs.version }}
+          docker push ghcr.io/${{ steps.repo.outputs.image }}:${{ needs.pre-flight.outputs.version }}
 
   release:
     needs:
@@ -81,16 +90,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-      - run: npm run build
+      - name: Build project
+        run: npm run build
 
       - name: Install Netlify CLI
         run: npm install -g netlify-cli
@@ -99,4 +112,5 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        run: netlify deploy --dir=dist --prod
+        run: |
+          netlify deploy --dir=dist --prod
